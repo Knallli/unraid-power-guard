@@ -397,9 +397,15 @@
     }
 
     // Temps: the most relevant sensors first
-    const pick = t.temps.filter((x) => /package|tctl|composite|edge|spd|cpu|temp1/i.test(x.label + x.chip)).slice(0, 7);
-    document.getElementById('pg-temps').innerHTML = (pick.length ? pick : t.temps.slice(0, 7))
-      .map((x) => `<span>${esc(x.chip)} ${esc(x.label)}</span><b>${x.c.toFixed(0)} °C</b>`).join('') || '<span class="sub">keine Sensoren</span>';
+    const pick = (t.temps.filter((x) => /package|tctl|composite|edge|spd|cpu|temp1/i.test(x.label + x.chip)) || []).slice(0, 7);
+    const seen = {};
+    document.getElementById('pg-temps').innerHTML = (pick.length ? pick : t.temps.slice(0, 7)).map((x) => {
+      const key = `${x.chip} ${x.label}`;
+      seen[key] = (seen[key] || 0) + 1;
+      // Several identical chips (two NVMe, two DIMMs) get a running number.
+      const dup = t.temps.filter((y) => `${y.chip} ${y.label}` === key).length > 1;
+      return `<span>${esc(x.chip)}${dup ? ' ' + seen[key] : ''} ${esc(x.label)}</span><b>${x.c.toFixed(0)} °C</b>`;
+    }).join('') || '<span class="sub">keine Sensoren</span>';
 
     if (!prev) return;
     const dt = t.t - prev.t;

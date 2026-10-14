@@ -37,6 +37,18 @@
   --shadow: none;
 }
 .pg *, .pg *::before, .pg *::after { box-sizing: border-box; }
+
+/* Undo Unraid's global form/list styling that leaks into the page. */
+.pg button, .pg input[type="button"] {
+  text-transform: none; letter-spacing: normal; min-width: 0; margin: 0;
+  background-image: none; font-size: inherit; font-family: inherit; line-height: 1.3; height: auto; box-shadow: none;
+}
+.pg input[type="checkbox"] { display: inline-block; margin: 0; width: auto; height: auto; }
+.pg select, .pg input[type="text"] { min-width: 0; margin: 0; width: auto; height: auto; letter-spacing: normal; }
+.pg dl, .pg dt, .pg dd { float: none; width: auto; margin: 0; padding: 0; text-align: left; }
+.pg dd { display: block; }
+.pg dd span, .pg li span, .pg summary span { display: inline; width: auto; }
+.pg h2, .pg h3 { border: 0; background: none; }
 .pg h2, .pg h3 { margin: 0; font-weight: 600; letter-spacing: .01em; }
 .pg h2 { font-size: 18px; }
 .pg h3 { font-size: 14px; text-transform: uppercase; color: var(--muted); letter-spacing: .06em; }
