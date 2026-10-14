@@ -1,0 +1,61 @@
+<?xml version="1.0" standalone="yes"?>
+<!DOCTYPE PLUGIN [
+<!ENTITY name      "power-guard">
+<!ENTITY author    "Knallli">
+<!ENTITY version   "@VERSION@">
+<!ENTITY md5       "@MD5@">
+<!ENTITY github    "Knallli/unraid-power-guard">
+<!ENTITY pkg       "&name;-&version;-x86_64-1">
+<!ENTITY plugdir   "/usr/local/emhttp/plugins/&name;">
+<!ENTITY flashdir  "/boot/config/plugins/&name;">
+<!ENTITY pluginURL "https://github.com/&github;/releases/latest/download/&name;.plg">
+]>
+<PLUGIN name="&name;" author="&author;" version="&version;" pluginURL="&pluginURL;"
+        launch="Utilities/PowerGuard" icon="bolt" min="7.0.0"
+        support="https://github.com/&github;/issues">
+
+<CHANGES>
+@CHANGES@
+</CHANGES>
+
+<!-- Drop package files of other versions from the flash. -->
+<FILE Run="/bin/bash">
+<INLINE>
+find "&flashdir;" -maxdepth 1 -name '&name;-*.tgz' ! -name '&pkg;.tgz' -delete 2&gt;/dev/null
+true
+</INLINE>
+</FILE>
+
+<FILE Name="&flashdir;/&pkg;.tgz" Run="upgradepkg --install-new --reinstall">
+<URL>https://github.com/&github;/releases/download/&version;/&pkg;.tgz</URL>
+<MD5>&md5;</MD5>
+</FILE>
+
+<FILE Run="/bin/bash">
+<INLINE>
+chmod 0755 &plugdir;/bin/power-guard
+find &plugdir;/event -type f -exec chmod 0755 {} + 2&gt;/dev/null
+ln -sf &plugdir;/bin/power-guard /usr/local/sbin/power-guard
+mkdir -p /var/local/&name;
+echo ""
+echo "----------------------------------------------------"
+echo " Power Guard &version; installed."
+echo " Mode: observe – nothing is changed until you enable it."
+echo " Open: Utilities → Power Guard  |  CLI: power-guard help"
+echo "----------------------------------------------------"
+echo ""
+</INLINE>
+</FILE>
+
+<FILE Run="/bin/bash" Method="remove">
+<INLINE>
+# Observe-only release: nothing to roll back yet. Config on flash is kept.
+removepkg &pkg; 2&gt;/dev/null || removepkg &name;
+rm -f /usr/local/sbin/power-guard
+rm -rf &plugdir; /var/local/&name;
+rm -f &flashdir;/&name;-*.tgz
+echo "Power Guard removed. Settings kept in &flashdir;/config.json"
+</INLINE>
+</FILE>
+
+</PLUGIN>

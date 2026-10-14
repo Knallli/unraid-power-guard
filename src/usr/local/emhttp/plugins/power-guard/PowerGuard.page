@@ -1,0 +1,23 @@
+Menu="Utilities"
+Title="Power Guard"
+Icon="bolt"
+Tag="bolt"
+Markdown="false"
+---
+<?php
+$pgDir = '/usr/local/emhttp/plugins/power-guard';
+$pgVer = trim((string)@file_get_contents("$pgDir/VERSION")) ?: 'dev';
+$pgTheme = in_array($display['theme'] ?? 'white', ['black', 'gray'], true) ? 'dark' : 'light';
+$pgAsset = static function (string $f) use ($pgDir, $pgVer): string {
+    $m = @filemtime("$pgDir/assets/$f");
+    return "/plugins/power-guard/assets/$f?v=" . rawurlencode($pgVer . '-' . ($m ?: 0));
+};
+?>
+<link rel="stylesheet" href="<?= htmlspecialchars($pgAsset('app.css')) ?>">
+<div id="pg-app" class="pg" data-theme="<?= $pgTheme ?>"
+     data-csrf="<?= htmlspecialchars($var['csrf_token'] ?? '') ?>"
+     data-api="/plugins/power-guard/include/api.php"
+     data-version="<?= htmlspecialchars($pgVer) ?>">
+  <div class="pg-loading"><span class="pg-spinner"></span> Power Guard erkennt die Hardware …</div>
+</div>
+<script src="<?= htmlspecialchars($pgAsset('app.js')) ?>"></script>

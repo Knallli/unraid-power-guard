@@ -1,0 +1,103 @@
+#!/usr/bin/php -q
+<?php
+declare(strict_types=1);
+
+namespace PowerGuard;
+
+require dirname(__DIR__) . '/lib/bootstrap.php';
+
+const USAGE = <<<TXT
+Usage: power-guard <command> [options]
+
+  detect               Hardware-Erkennung als JSON
+  plan [--profile=P]   Ist/Soll aller Tweaks (P: efficiency|balanced|performance)
+  status               Kompletter Status (Hardware, Plan, Konflikte) als JSON
+  conflicts            Konflikte mit anderen Plugins/Skripten
+  telemetry            Eine Telemetrie-Stichprobe
+  apply | revert       (noch nicht verfügbar – Beobachtungsmodus)
+
+Optionen: --pretty  formatiertes JSON   --table  Plan als Tabelle
+
+TXT;
+
+function out(mixed $data, bool $pretty): void
+{
+    echo json_encode($data, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | ($pretty ? JSON_PRETTY_PRINT : 0)), "\n";
+}
+
+function fmt(mixed $v, ?string $f): string
+{
+    if ($v === null) {
+        return '–';
+    }
+    if (is_int($v) && $f === 'bytes') {
+        return $v >= 1073741824 ? round($v / 1073741824, 1) . ' GiB' : round($v / 1048576) . ' MiB';
+    }
+    if (is_int($v) && $f === 'kib') {
+        return round($v / 1024) . ' MiB';
+    }
+    if ($f === 'bool' && is_int($v)) {
+        return $v ? 'an' : 'aus';
+    }
+    return is_scalar($v) ? (string)$v : json_encode($v);
+}
+
+$args = array_slice($argv, 1);
+$cmd = $args[0] ?? 'help';
+$opts = [];
+foreach (array_slice($args, 1) as $a) {
+    if (preg_match('/^--([a-z-]+)(?:=(.*))?$/', $a, $m)) {
+        $opts[$m[1]] = $m[2] ?? true;
+    }
+}
+$pretty = isset($opts['pretty']);
+
+try {
+    switch ($cmd) {
+        case 'detect':
+            out(Hardware::detect(), $pretty);
+            break;
+        case 'plan':
+            $p = $opts['profile'] ?? null;
+            if ($p !== null && !in_array($p, Registry::PROFILES, true)) {
+                fwrite(STDERR, "Unbekanntes Profil: $p\n");
+                exit(2);
+            }
+            $plan = Service::plan(is_string($p) ? $p : null);
+            if (isset($opts['table'])) {
+                printf("Profil: %s   Score: %d/100\n\n", $plan['profile'], $plan['score']['value']);
+                foreach ($plan['rows'] as $r) {
+                    $col = static fn(mixed $v): string => mb_str_pad(mb_strimwidth(fmt($v, $r['format']), 0, 28, '…'), 28);
+                    printf("%-12s %-34s %s -> %s %s\n", $r['status'], $r['id'], $col($r['current']), $col($r['target']),
+                        $r['reason'] ? '  ! ' . $r['reason'] : '');
+                }
+            } else {
+                out($plan, $pretty);
+            }
+            break;
+        case 'status':
+            out(Service::status(), $pretty);
+            break;
+        case 'conflicts':
+            out(Conflicts::scan(), $pretty);
+            break;
+        case 'telemetry':
+            out(Telemetry::sample(), $pretty);
+            break;
+        case 'apply':
+        case 'revert':
+            fwrite(STDERR, "power-guard: '$cmd' ist in dieser Version noch nicht verfügbar (Beobachtungsmodus).\n");
+            exit(3);
+        case 'help':
+        case '--help':
+        case '-h':
+            echo USAGE;
+            break;
+        default:
+            fwrite(STDERR, USAGE);
+            exit(2);
+    }
+} catch (\Throwable $e) {
+    fwrite(STDERR, 'power-guard: ' . $e->getMessage() . "\n");
+    exit(1);
+}
