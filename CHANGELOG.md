@@ -1,3 +1,11 @@
+###2026.10.14a
+- Phase 2: Empfehlungen anwenden und zurücknehmen (sysctl, THP, ZFS-ARC, Governor/EPP, Turbo, HWP-Boost).
+- Vorschau-Dialog mit Vorher/Nachher und den konkreten Schreibzugriffen; Tweaks mit mittlerem/hohem Risiko sind standardmäßig abgewählt.
+- Baseline (Originalwerte vor der ersten Änderung) und Journal; „Zurücknehmen“ pro Tweak oder „Alles auf Baseline“.
+- Angewendete Tweaks werden beim Boot und beim Array-Start erneut gesetzt; nicht freigegebene bleiben unangetastet.
+- Schreibschutz: nur freigegebene sysfs/procfs-Pfade, Werte gegen die vom Kernel angebotenen Optionen geprüft.
+- Deinstallation setzt alle geänderten Werte zurück.
+
 ###2026.10.14
 - Erste Version (Phase 1): Beobachtungsmodus. Power Guard ändert nichts am System.
 - Hardware-Erkennung: CPU-Topologie (P/E-Kerne), cpufreq/EPP/HWP, C-States, Bootloader, NICs (Ring, EEE, WoL), USB-Baum mit Schutzklassen, PCIe/ASPM, ZFS-Pools/ARC.

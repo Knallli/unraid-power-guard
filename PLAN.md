@@ -2,7 +2,7 @@
 
 Unraid-Plugin, das **AutoTweak** und **Tips and Tweaks** vollständig ablöst. Es optimiert das System hardware- und versionsgerecht nach aktuellen Linux-Best-Practices (Kernel 6.18 / Unraid 7.4) und hat eine moderne Weboberfläche.
 
-Status: **P1 implementiert** (Beobachtungsmodus, ändert nichts). Auf dem Server nur in `/tmp/pg-test` getestet, noch nicht als Plugin installiert.
+Status: **P1 veröffentlicht** (Release 2026.10.14), **P2 implementiert** (Apply/Revert/Journal, Branch `phase-2`). P2 ist gegen ein Fake-sysfs getestet (`tests/engine.sh`), noch nicht auf dem Live-System angewendet.
 
 ### Korrekturen aus P1 (Live-Erkennung vom 14.10.2026)
 - **NMI-Watchdog:** Der Unraid-Kernel hat keinen Hard-Lockup-Detektor (`/proc/sys/kernel/nmi_watchdog` fehlt). Es gibt nichts abzuschalten; der Tweak ist „Nicht zutreffend“.
