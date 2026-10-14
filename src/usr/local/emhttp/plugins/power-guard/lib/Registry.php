@@ -33,8 +33,14 @@ final class Registry
     {
         $profile = in_array($config['profile'] ?? '', self::PROFILES, true) ? $config['profile'] : 'efficiency';
         $rows = [];
+        $managed = $config['managed'] ?? [];
+        $baseline = State::baseline();
         foreach (self::load($ctx) as $t) {
-            $rows[] = $t->evaluate($profile, $ctx, $config['tweaks'][$t->id()] ?? []);
+            $row = $t->evaluate($profile, $ctx, $config['tweaks'][$t->id()] ?? []);
+            $row['supported'] = Engine::supports($t->spec('target'));
+            $row['managed'] = in_array($t->id(), $managed, true);
+            $row['touched'] = isset($baseline[$t->id()]);
+            $rows[] = $row;
         }
         $order = array_flip(array_keys(self::CATEGORIES));
         usort($rows, static fn(array $a, array $b): int => ($order[$a['category']] ?? 99) <=> ($order[$b['category']] ?? 99));

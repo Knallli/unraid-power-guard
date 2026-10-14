@@ -86,6 +86,7 @@
     const seg = Object.entries(PROFILES).map(([k, l]) =>
       `<button type="button" data-profile="${k}" class="${cfg.profile === k ? 'on' : ''}" aria-pressed="${cfg.profile === k}">${l}</button>`).join('');
     const pending = s.plan.rows.filter((r) => r.status === 'recommended').length;
+    const applicable = s.plan.rows.filter((r) => r.status === 'recommended' && r.supported).length;
     const active = cfg.mode === 'active';
     return `<div class="pg-card pg-header">
       <div class="pg-title"><div class="bolt" aria-hidden="true">⚡</div>
@@ -94,7 +95,7 @@
       <div class="grow"></div>
       <div class="pg-seg" role="group" aria-label="Profil">${seg}</div>
       <div class="pg-score">${ring(s.plan.score.value)}<div><div><b>${pending}</b> Empfehlung${pending === 1 ? '' : 'en'}</div><div class="lbl">Optimierungs-Score</div></div></div>
-      <button type="button" class="pg-btn primary" disabled title="Anwenden kommt mit Phase 2 (Apply/Revert/Journal). Aktuell läuft der Beobachtungsmodus.">Empfehlungen anwenden</button>
+      <button type="button" class="pg-btn primary" data-act="preview" ${applicable ? '' : 'disabled'} title="${applicable ? 'Vorschau aller Änderungen öffnen' : 'Keine anwendbaren Empfehlungen'}">Empfehlungen anwenden${applicable ? ` (${applicable})` : ''}</button>
     </div>`;
   }
 
@@ -177,6 +178,7 @@
       : `${esc(fmtVal(r.current, r.format))}${r.target !== null && r.status !== 'optimal' && r.status !== 'custom'
         ? `<span class="arrow">→</span><span class="to">${esc(fmtVal(r.target, r.format))}</span>` : ''}`;
     const badges = [
+      r.managed ? '<span class="pg-chip managed" title="Wird von Power Guard verwaltet und beim Boot gesetzt">verwaltet</span>' : '',
       r.risk !== 'low' ? `<span class="pg-chip risk-${esc(r.risk)}">Risiko ${RISK[r.risk]}</span>` : '',
       r.timing === 'reboot' ? '<span class="pg-chip reboot">Reboot</span>' : '',
     ].join('');
@@ -200,7 +202,10 @@
             <option value="off" ${r.mode === 'off' ? 'selected' : ''}>Nicht verwalten</option></select></label>
           <input data-role="value" type="text" placeholder="${esc(r.recommended ?? '')}" title="${r.format === 'bytes' ? 'Wert in Bytes' : r.format === 'kib' ? 'Wert in KiB' : 'Rohwert wie in sysfs/sysctl'}" value="${r.mode === 'custom' ? esc(r.target ?? '') : ''}" ${r.mode === 'custom' ? '' : 'hidden'} aria-label="Eigener Wert">
           <button type="button" class="pg-btn small" data-role="save">Speichern</button>
+          ${r.status === 'recommended' && r.supported ? `<button type="button" class="pg-btn small primary" data-act="preview" data-ids="${esc(r.id)}">Anwenden …</button>` : ''}
+          ${r.touched ? `<button type="button" class="pg-btn small" data-act="revert" data-ids="${esc(r.id)}">Zurücknehmen</button>` : ''}
         </div>` : ''}
+        ${r.manageable && !r.supported ? '<p class="dim">Anwenden folgt in Phase 4 (NIC/PCI/USB).</p>' : ''}
       </div></div>`;
   }
 
@@ -219,12 +224,87 @@
       ${cats || '<p class="sub">Keine Abweichungen, alles ist optimal. 🎉</p>'}</div>`;
   }
 
+  // ---------- render: journal ----------
+  function journal(s) {
+    const list = s.journal || [];
+    const touched = s.plan.rows.filter((r) => r.touched).length;
+    const title = Object.fromEntries(s.plan.rows.map((r) => [r.id, r.title]));
+    const items = list.slice(0, 15).map((e) => `<li class="${e.ok ? '' : 'bad'}">
+        <time>${new Date(e.t * 1000).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}</time>
+        <span><b>${e.action === 'revert' ? 'Zurückgesetzt' : 'Angewendet'}${e.boot ? ' (Boot)' : ''}${e.ok ? '' : ' – Fehler'}</b>
+        ${esc(title[e.id] || e.id)}${e.action === 'apply' && e.ok ? ` <span class="mono dim">${esc(fmtVal(e.from))} → ${esc(fmtVal(e.to))}</span>` : ''}
+        ${e.msg ? `<br><span class="dim">${esc(e.msg)}</span>` : ''}</span></li>`).join('');
+    return `<div class="pg-card pg-journal"><div class="pg-toolbar"><h3 style="margin:0">Journal</h3>
+        <div class="grow"></div>
+        <button type="button" class="pg-btn small" data-act="revert" data-ids="all" ${touched ? '' : 'disabled'}
+          title="Alle von Power Guard geänderten Werte auf den Stand vor der ersten Änderung zurücksetzen und in den Beobachtungsmodus wechseln">Alles auf Baseline</button></div>
+      ${items ? `<ul>${items}</ul>` : '<p class="dim">Noch keine Änderungen.</p>'}</div>`;
+  }
+
+  // ---------- preview dialog ----------
+  async function openPreview(ids) {
+    let changes;
+    try { ({ changes } = await api('preview', ids ? { ids: JSON.stringify(ids) } : {})); } catch (e) { toast(e.message, true); return; }
+    if (!changes.length) { toast('Keine Änderungen nötig'); return; }
+    const dlg = document.createElement('dialog');
+    dlg.className = 'pg pg-dialog';
+    dlg.dataset.theme = root.dataset.theme;
+    const row = (c) => {
+      const ok = c.supported && !c.error;
+      const checked = ok && (ids || c.risk === 'low');
+      return `<label class="pg-change ${ok ? '' : 'off'}">
+        <input type="checkbox" value="${esc(c.id)}" ${ok ? '' : 'disabled'} ${checked ? 'checked' : ''}>
+        <span><b>${esc(c.title)}</b> ${c.risk !== 'low' ? `<span class="pg-chip risk-${esc(c.risk)}">Risiko ${RISK[c.risk]}</span>` : ''}
+          <span class="mono"><br>${esc(fmtVal(c.from, c.format))} <span class="arrow">→</span> <span class="to">${esc(fmtVal(c.to, c.format))}</span></span>
+          ${c.error ? `<br><span class="reason conflict">${esc(c.error)}</span>` : ''}
+          ${!c.supported ? '<br><span class="dim">Anwenden folgt in Phase 4</span>' : ''}
+          ${c.writes.length ? `<details><summary class="dim">${c.writes.length} Schreibzugriff${c.writes.length > 1 ? 'e' : ''}</summary><pre>${esc(c.writes.map((w) => `${w.path} = ${w.value}`).join('\n'))}</pre></details>` : ''}
+        </span></label>`;
+    };
+    dlg.innerHTML = `<form method="dialog">
+      <h2>Vorschau: ${changes.length} Änderung${changes.length > 1 ? 'en' : ''}</h2>
+      <p class="dim">Jeder Wert wird vor dem ersten Schreiben als Baseline gesichert und kann einzeln zurückgenommen werden. Angewendete Tweaks setzt Power Guard bei jedem Boot erneut. Alle Änderungen wirken sofort, ohne Neustart.</p>
+      <div class="pg-changes">${changes.map(row).join('')}</div>
+      <div class="pg-dialog-foot"><button class="pg-btn" value="cancel">Abbrechen</button>
+        <button class="pg-btn primary" value="apply" data-role="go">Anwenden</button></div></form>`;
+    document.body.appendChild(dlg);
+    const go = dlg.querySelector('[data-role="go"]');
+    const selected = () => [...dlg.querySelectorAll('input[type=checkbox]:checked')].map((i) => i.value);
+    const sync = () => { const n = selected().length; go.disabled = !n; go.textContent = `${n} anwenden`; };
+    dlg.addEventListener('change', sync);
+    sync();
+    dlg.addEventListener('close', async () => {
+      const chosen = selected();
+      const confirmed = dlg.returnValue === 'apply';
+      dlg.remove();
+      if (!confirmed || !chosen.length) return;
+      try {
+        const res = await api('apply', { ids: JSON.stringify(chosen) });
+        const msg = `${res.applied.length} angewendet` + (res.failed.length ? `, ${res.failed.length} fehlgeschlagen: ${res.failed.map((f) => f.reason).join('; ')}` : '')
+          + (res.skipped.length ? `, ${res.skipped.length} übersprungen` : '');
+        toast(msg, res.failed.length > 0);
+        await load(true);
+      } catch (e) { toast(e.message, true); }
+    });
+    dlg.showModal();
+  }
+
+  async function revert(ids) {
+    const all = ids === 'all';
+    if (all && !confirm('Alle von Power Guard geänderten Werte zurücksetzen und in den Beobachtungsmodus wechseln?')) return;
+    try {
+      const res = await api('revert', all ? {} : { ids: JSON.stringify([ids]) });
+      toast(`${res.reverted.length} zurückgesetzt` + (res.failed.length ? `, ${res.failed.length} fehlgeschlagen` : ''), res.failed.length > 0);
+      await load(true);
+    } catch (e) { toast(e.message, true); }
+  }
+
   function render() {
     const s = ui.status;
     root.innerHTML = `${header(s)}
       <div class="pg-section">${tiles(s.hardware)}</div>
       ${conflicts(s.conflicts)}
-      <div class="pg-grid main pg-section">${tweaks(s)}${hardware(s.hardware)}</div>
+      <div class="pg-grid main pg-section">${tweaks(s)}<div class="pg-side">${journal(s)}${hardware(s.hardware)}</div></div>
       <div class="pg-foot">Erkannt ${new Date(s.hardware.detected * 1000).toLocaleTimeString()} · <a href="#" id="pg-refresh">Neu erkennen</a></div>`;
     ui.tel.prev = null;
     drawSpark();
@@ -238,6 +318,13 @@
       return;
     }
     if (ev.target.id === 'pg-refresh') { ev.preventDefault(); load(); return; }
+    const act = ev.target.closest('[data-act]');
+    if (act) {
+      ev.stopPropagation();
+      if (act.dataset.act === 'preview') openPreview(act.dataset.ids ? [act.dataset.ids] : null);
+      else if (act.dataset.act === 'revert') revert(act.dataset.ids);
+      return;
+    }
     const head = ev.target.closest('.pg-row > button.head');
     if (head) {
       const row = head.parentElement, id = row.dataset.id;

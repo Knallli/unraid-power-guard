@@ -159,6 +159,35 @@
 .pg-chip.risk-high { color: var(--bad); }
 .pg-chip.reboot { color: var(--e-core); }
 
+.pg .dim { color: var(--muted); }
+.pg .grow { flex: 1; }
+.pg-chip.managed { background: color-mix(in srgb, var(--accent-2) 14%, transparent); color: var(--accent-2); }
+.pg-side { display: grid; gap: 16px; align-content: start; min-width: 0; }
+
+/* Journal */
+.pg-journal ul { list-style: none; margin: 0; padding: 0; font-size: 12.5px; }
+.pg-journal li { display: grid; grid-template-columns: 92px 1fr; gap: 8px; padding: 5px 0; border-bottom: 1px solid var(--line); }
+.pg-journal li:last-child { border-bottom: 0; }
+.pg-journal time { color: var(--muted); font-variant-numeric: tabular-nums; }
+.pg-journal li.bad b { color: var(--bad); }
+
+/* Preview dialog */
+.pg-dialog { border: 1px solid var(--line); border-radius: 12px; padding: 0; width: min(720px, calc(100vw - 32px)); max-height: calc(100vh - 48px); box-shadow: 0 20px 50px rgba(0, 0, 0, .35); }
+.pg-dialog::backdrop { background: rgba(10, 12, 16, .55); }
+.pg-dialog form { display: flex; flex-direction: column; max-height: calc(100vh - 50px); padding: 18px; gap: 10px; }
+.pg-dialog p { margin: 0; font-size: 13px; }
+.pg-changes { overflow-y: auto; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.pg-change { display: flex; gap: 10px; padding: 9px 2px; border-bottom: 1px solid var(--line); cursor: pointer; align-items: flex-start; }
+.pg-change:last-child { border-bottom: 0; }
+.pg-change.off { opacity: .55; cursor: default; }
+.pg-change input { margin-top: 3px; accent-color: var(--accent); }
+.pg-change .arrow { color: var(--muted); }
+.pg-change .to { color: var(--accent); font-weight: 600; }
+.pg-change .reason.conflict { color: var(--bad); }
+.pg-change pre { background: var(--chip-bg); padding: 6px 8px; border-radius: 6px; margin: 4px 0 0; font-size: 11.5px; overflow-x: auto; }
+.pg-change summary { cursor: pointer; font-size: 12px; margin-top: 2px; }
+.pg-dialog-foot { display: flex; justify-content: flex-end; gap: 8px; }
+
 .pg-toast { position: fixed; right: 20px; bottom: 20px; background: var(--text); color: var(--card); padding: 10px 14px; border-radius: 8px; box-shadow: var(--shadow); z-index: 9999; opacity: 0; transform: translateY(8px); transition: all .25s; pointer-events: none; }
 .pg-toast.show { opacity: 1; transform: none; }
 .pg-toast.err { background: var(--bad); color: #fff; }

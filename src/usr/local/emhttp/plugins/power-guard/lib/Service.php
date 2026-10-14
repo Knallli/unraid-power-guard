@@ -24,6 +24,7 @@ final class Service
             'plan'      => Registry::plan($ctx, $cfg),
             'conflicts' => Conflicts::scan(),
             'categories' => Registry::CATEGORIES,
+            'journal'   => State::journalRead(30),
         ];
     }
 
@@ -34,5 +35,31 @@ final class Service
             $cfg['profile'] = $profile;
         }
         return Registry::plan(Context::build(), $cfg);
+    }
+
+    /** Before/after list for the preview dialog. */
+    public static function preview(?array $ids = null): array
+    {
+        return Engine::changes(Context::build(), State::config(), $ids);
+    }
+
+    /** Accepts only well-formed tweak ids. */
+    public static function ids(mixed $raw): ?array
+    {
+        if ($raw === null || $raw === '' || $raw === 'all') {
+            return null;
+        }
+        $list = is_array($raw) ? $raw : (json_decode((string)$raw, true) ?? explode(',', (string)$raw));
+        if (!is_array($list)) {
+            throw new \InvalidArgumentException('Ungültige Auswahl');
+        }
+        $ids = [];
+        foreach ($list as $id) {
+            if (!is_string($id) || !preg_match('/^[a-z0-9_.:-]{1,64}$/i', $id)) {
+                throw new \InvalidArgumentException('Ungültige Tweak-ID');
+            }
+            $ids[] = $id;
+        }
+        return $ids;
     }
 }

@@ -16,3 +16,8 @@ spl_autoload_register(static function (string $class): void {
         require $file;
     }
 });
+
+// Test hook: run everything against a fixture tree instead of the live system (CLI only).
+if (PHP_SAPI === 'cli' && ($fakeRoot = getenv('POWER_GUARD_ROOT')) && is_dir($fakeRoot)) {
+    Sys::$root = rtrim($fakeRoot, '/');
+}

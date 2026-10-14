@@ -24,6 +24,7 @@ return static function (Context $ctx): array {
     return [
         $sysctl('vm.dirty_bytes', 'Dirty-Limit (hart)', [
             'format' => 'bytes', 'why' => $dirtyWhy, 'risk' => 'low',
+            'target' => ['sysctl' => 'vm.dirty_bytes', 'pair' => 'vm.dirty_ratio'],
             'source' => 'https://docs.kernel.org/admin-guide/sysctl/vm.html#dirty-bytes',
             'current' => static function () use ($ctx) {
                 $b = $ctx->sysctlInt('vm.dirty_bytes');
@@ -33,6 +34,7 @@ return static function (Context $ctx): array {
         ]),
         $sysctl('vm.dirty_background_bytes', 'Dirty-Limit (Hintergrund)', [
             'format' => 'bytes', 'why' => 'Ab diesem Wert beginnt das Zurückschreiben im Hintergrund. Etwa ein Viertel des harten Limits.',
+            'target' => ['sysctl' => 'vm.dirty_background_bytes', 'pair' => 'vm.dirty_background_ratio'],
             'source' => 'https://docs.kernel.org/admin-guide/sysctl/vm.html#dirty-background-bytes',
             'current' => static function () use ($ctx) {
                 $b = $ctx->sysctlInt('vm.dirty_background_bytes');

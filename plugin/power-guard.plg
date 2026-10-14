@@ -37,10 +37,12 @@ chmod 0755 &plugdir;/bin/power-guard
 find &plugdir;/event -type f -exec chmod 0755 {} + 2&gt;/dev/null
 ln -sf &plugdir;/bin/power-guard /usr/local/sbin/power-guard
 mkdir -p /var/local/&name;
+# Re-apply approved tweaks at boot. No-op in observe mode or when nothing is managed.
+&plugdir;/bin/power-guard apply --boot --quiet || echo "Power Guard: some tweaks failed, see 'power-guard journal'"
 echo ""
 echo "----------------------------------------------------"
 echo " Power Guard &version; installed."
-echo " Mode: observe – nothing is changed until you enable it."
+echo " Nothing changes until you apply recommendations in the UI."
 echo " Open: Utilities → Power Guard  |  CLI: power-guard help"
 echo "----------------------------------------------------"
 echo ""
@@ -49,7 +51,8 @@ echo ""
 
 <FILE Run="/bin/bash" Method="remove">
 <INLINE>
-# Observe-only release: nothing to roll back yet. Config on flash is kept.
+# Restore every value Power Guard changed in this boot. Config on flash is kept.
+[ -x &plugdir;/bin/power-guard ] &amp;&amp; &plugdir;/bin/power-guard revert --quiet
 removepkg &pkg; 2&gt;/dev/null || removepkg &name;
 rm -f /usr/local/sbin/power-guard
 rm -rf &plugdir; /var/local/&name;

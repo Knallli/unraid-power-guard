@@ -14,9 +14,13 @@ Usage: power-guard <command> [options]
   status               Kompletter Status (Hardware, Plan, Konflikte) als JSON
   conflicts            Konflikte mit anderen Plugins/Skripten
   telemetry            Eine Telemetrie-Stichprobe
-  apply | revert       (noch nicht verfügbar – Beobachtungsmodus)
+  preview [--ids=a,b]  Geplante Änderungen (vorher → nachher)
+  apply --ids=a,b|--all  Änderungen anwenden; die IDs werden ab dann verwaltet
+  apply --boot         Verwaltete Tweaks erneut setzen (Boot/Array-Start)
+  revert [--ids=a,b]   Auf die Baseline zurücksetzen (ohne IDs: alles, Modus „Beobachten“)
+  journal              Änderungsprotokoll
 
-Optionen: --pretty  formatiertes JSON   --table  Plan als Tabelle
+Optionen: --pretty  formatiertes JSON   --table  Tabelle   --quiet  keine Ausgabe
 
 TXT;
 
@@ -84,10 +88,45 @@ try {
         case 'telemetry':
             out(Telemetry::sample(), $pretty);
             break;
+        case 'preview':
+            $changes = Service::preview(Service::ids($opts['ids'] ?? null));
+            if (isset($opts['table'])) {
+                foreach ($changes as $c) {
+                    printf("%-34s %s -> %s%s\n", $c['id'], fmt($c['from'], $c['format']), fmt($c['to'], $c['format']),
+                        $c['supported'] ? ($c['error'] ? '  ! ' . $c['error'] : '') : '  (folgt in Phase 4)');
+                    foreach ($c['writes'] as $w) {
+                        printf("    %s = %s\n", $w['path'], $w['value']);
+                    }
+                }
+            } else {
+                out($changes, $pretty);
+            }
+            break;
         case 'apply':
+            if (isset($opts['boot'])) {
+                $res = Engine::apply(null, true);
+            } else {
+                $ids = isset($opts['all']) ? array_column(array_filter(Service::preview(), static fn($c) => $c['supported'] && !$c['error']), 'id')
+                    : Service::ids($opts['ids'] ?? null);
+                if (!$ids) {
+                    fwrite(STDERR, "power-guard: --ids=… oder --all angeben (siehe 'power-guard preview').\n");
+                    exit(2);
+                }
+                $res = Engine::apply($ids);
+            }
+            if (!isset($opts['quiet'])) {
+                out($res, $pretty);
+            }
+            exit($res['failed'] ? 1 : 0);
         case 'revert':
-            fwrite(STDERR, "power-guard: '$cmd' ist in dieser Version noch nicht verfügbar (Beobachtungsmodus).\n");
-            exit(3);
+            $res = Engine::revert(Service::ids($opts['ids'] ?? null));
+            if (!isset($opts['quiet'])) {
+                out($res, $pretty);
+            }
+            exit($res['failed'] ? 1 : 0);
+        case 'journal':
+            out(State::journalRead(200), $pretty);
+            break;
         case 'help':
         case '--help':
         case '-h':

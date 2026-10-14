@@ -1,0 +1,6 @@
+#!/bin/bash
+# Array started: ZFS pools are imported and Docker is up, so module parameters
+# and container-dependent recommendations are now available. Re-apply managed tweaks.
+/usr/local/emhttp/plugins/power-guard/bin/power-guard apply --boot --quiet \
+  || logger -t power-guard "re-apply on array start reported errors (see: power-guard journal)"
+exit 0

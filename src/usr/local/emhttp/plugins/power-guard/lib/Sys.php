@@ -41,6 +41,64 @@ final class Sys
         return $v === false ? null : $v;
     }
 
+    /**
+     * Write a sysfs/procfs value. Callers must validate path and value first (Engine).
+     * Under a fixture root the kernel's side effects are emulated so tests behave like a real system.
+     */
+    public static function write(string $path, string $value): bool
+    {
+        if (self::$root !== '') {
+            return self::fakeWrite($path, $value);
+        }
+        return @file_put_contents($path, $value) !== false;
+    }
+
+    /** Selected value for "[a] b c" style files, trimmed content otherwise. */
+    public static function readValue(string $path): ?string
+    {
+        $v = self::read($path);
+        if ($v !== null && str_contains($v, '[')) {
+            return self::bracketed($v)[0];
+        }
+        return $v === null ? null : preg_replace('/\s+/', ' ', $v);
+    }
+
+    public static function log(string $msg): void
+    {
+        if (self::$root === '') {
+            self::run(['logger', '-t', 'power-guard', '--', $msg]);
+        }
+    }
+
+    private const FAKE_PAIRS = [
+        '/proc/sys/vm/dirty_bytes' => '/proc/sys/vm/dirty_ratio',
+        '/proc/sys/vm/dirty_ratio' => '/proc/sys/vm/dirty_bytes',
+        '/proc/sys/vm/dirty_background_bytes' => '/proc/sys/vm/dirty_background_ratio',
+        '/proc/sys/vm/dirty_background_ratio' => '/proc/sys/vm/dirty_background_bytes',
+    ];
+
+    private static function fakeWrite(string $path, string $value): bool
+    {
+        $p = self::path($path);
+        if (!is_file($p)) {
+            return false;
+        }
+        $old = (string)file_get_contents($p);
+        if (str_contains($old, '[')) {
+            [, $opts] = self::bracketed($old);
+            if (!in_array($value, $opts, true)) {
+                return false; // EINVAL
+            }
+            $value = implode(' ', array_map(static fn($o) => $o === $value ? "[$o]" : $o, $opts));
+        } elseif (isset(self::FAKE_PAIRS[$path])) {
+            if ((int)$value === 0 && str_ends_with($path, '_bytes')) {
+                return false; // kernel minimum is two pages
+            }
+            file_put_contents(self::path(self::FAKE_PAIRS[$path]), "0\n");
+        }
+        return file_put_contents($p, $value . "\n") !== false;
+    }
+
     public static function readInt(string $path): ?int
     {
         $v = self::read($path);

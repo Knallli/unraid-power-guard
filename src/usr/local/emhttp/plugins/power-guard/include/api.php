@@ -25,7 +25,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
 }
 
 $action = (string)($_POST['action'] ?? '');
-$actions = ['status', 'plan', 'detect', 'conflicts', 'telemetry', 'config'];
+$actions = ['status', 'plan', 'detect', 'conflicts', 'telemetry', 'config', 'preview', 'apply', 'revert', 'journal'];
 if (!in_array($action, $actions, true)) {
     respond(400, ['error' => 'unknown action']);
 }
@@ -51,11 +51,23 @@ try {
             if (!is_array($patch)) {
                 respond(400, ['error' => 'invalid patch']);
             }
-            // Activating needs the apply engine (phase 2); refuse until it exists.
-            if (($patch['mode'] ?? null) === 'active') {
-                respond(409, ['error' => 'Aktiver Modus ist in dieser Version noch nicht verfügbar.']);
+            // "active" is entered by applying; it would have nothing to manage otherwise.
+            if (($patch['mode'] ?? null) === 'active' && State::config()['managed'] === []) {
+                respond(409, ['error' => 'Erst Empfehlungen anwenden, dann ist der aktive Modus verfügbar.']);
             }
             respond(200, ['config' => State::saveConfig($patch)]);
+        case 'preview':
+            respond(200, ['changes' => Service::preview(Service::ids($_POST['ids'] ?? null))]);
+        case 'apply':
+            $ids = Service::ids($_POST['ids'] ?? null);
+            if ($ids === null || $ids === []) {
+                respond(400, ['error' => 'Keine Tweaks ausgewählt']);
+            }
+            respond(200, Engine::apply($ids));
+        case 'revert':
+            respond(200, Engine::revert(Service::ids($_POST['ids'] ?? null)));
+        case 'journal':
+            respond(200, ['journal' => State::journalRead(200), 'baseline' => State::baseline()]);
     }
 } catch (\InvalidArgumentException $e) {
     respond(400, ['error' => $e->getMessage()]);
