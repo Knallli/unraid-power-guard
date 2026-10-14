@@ -1,3 +1,7 @@
+###2026.10.14c
+- UI: gegen Unraids globale Button- und Listen-Styles abgeschirmt (keine Großbuchstaben, keine verrutschten Hardware-Angaben).
+- UI: gleichnamige Sensoren (zwei NVMe, zwei DIMMs) werden durchnummeriert; Wertespalte bleibt bei Risiko-Badges bündig.
+
 ###2026.10.14b
 - Fix: Die Weboberfläche blieb bei „erkennt die Hardware …“ hängen. Unraid lässt multipart-POSTs an Plugin-Endpunkte hängen; die API wird jetzt URL-encoded aufgerufen.
 - Fix: Nach dem Zurücknehmen des letzten verwalteten Tweaks wechselt Power Guard in den Beobachtungsmodus.
