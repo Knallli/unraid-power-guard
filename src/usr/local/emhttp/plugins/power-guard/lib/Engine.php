@@ -169,11 +169,9 @@ final class Engine
                 }
             }
             State::saveBaseline($baseline);
-            if ($ids === null) {
-                State::setManaged([], 'observe');
-            } else {
-                State::setManaged(array_values(array_diff($cfg['managed'], $ids)));
-            }
+            // Nothing left to manage means there is nothing to re-apply at boot: back to observe.
+            $remaining = $ids === null ? [] : array_values(array_diff($cfg['managed'], $ids));
+            State::setManaged($remaining, $remaining === [] ? 'observe' : null);
             if ($result['reverted'] || $result['failed']) {
                 Sys::log(sprintf('revert: %d zurückgesetzt, %d fehlgeschlagen', count($result['reverted']), count($result['failed'])));
             }

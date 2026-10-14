@@ -72,6 +72,7 @@ $PG apply --boot --quiet
 
 # Single revert, then revert all.
 $PG revert --ids=mm.thp --quiet
+grep -q '"mode": "active"' "$WORK/cfg/config.json" && ok "partial revert keeps active" || bad "partial revert left active mode"
 grep -q '\[always\]' "$FAKE/sys/kernel/mm/transparent_hugepage/enabled" && ok "revert single" || bad "revert thp: $(val /sys/kernel/mm/transparent_hugepage/enabled)"
 grep -q '"mm.thp"' "$WORK/cfg/config.json" && bad "thp still managed" || ok "thp no longer managed"
 $PG revert --quiet
