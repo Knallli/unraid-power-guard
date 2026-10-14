@@ -1,3 +1,7 @@
+###2026.10.14b
+- Fix: Die Weboberfläche blieb bei „erkennt die Hardware …“ hängen. Unraid lässt multipart-POSTs an Plugin-Endpunkte hängen; die API wird jetzt URL-encoded aufgerufen.
+- Fix: Nach dem Zurücknehmen des letzten verwalteten Tweaks wechselt Power Guard in den Beobachtungsmodus.
+
 ###2026.10.14a
 - Phase 2: Empfehlungen anwenden und zurücknehmen (sysctl, THP, ZFS-ARC, Governor/EPP, Turbo, HWP-Boost).
 - Vorschau-Dialog mit Vorher/Nachher und den konkreten Schreibzugriffen; Tweaks mit mittlerem/hohem Risiko sind standardmäßig abgewählt.

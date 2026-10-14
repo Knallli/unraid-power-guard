@@ -49,7 +49,8 @@
   }
 
   async function api(action, data = {}) {
-    const body = new FormData();
+    // URL-encoded on purpose: Unraid's nginx/php-fpm stalls multipart POSTs to plugin endpoints.
+    const body = new URLSearchParams();
     body.append('csrf_token', CSRF);
     body.append('action', action);
     for (const [k, v] of Object.entries(data)) body.append(k, typeof v === 'string' ? v : JSON.stringify(v));
